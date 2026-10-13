@@ -13,6 +13,7 @@ data/
 dist/
 build/
 *.spec
+installer_output/
 
 # IDE & OS
 .idea/

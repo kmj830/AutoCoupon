@@ -1,20 +1,16 @@
 import subprocess
-import httpx
-from typing import Optional
 
 class Notifier:
-    def __init__(self, discord_webhook_url: Optional[str] = None):
-        self.discord_webhook_url = discord_webhook_url
+    def __init__(self, enable_notifications: bool = True):
+        self.enable_notifications = enable_notifications
 
     def notify(self, title: str, message: str, status: str = "INFO"):
         print(f"[{status}] {title}: {message}")
-        self._send_windows_notification(title, message)
-        if self.discord_webhook_url:
-            self._send_discord(title, message, status)
+        if self.enable_notifications:
+            self._send_windows_notification(title, message)
 
     def _send_windows_notification(self, title: str, message: str):
         try:
-            # PowerShell 기반 윈도우 토스트 알림 (별도 외부 C 바인딩 불필요)
             safe_title = title.replace("'", "''").replace('"', '`"')
             safe_message = message.replace("'", "''").replace('"', '`"')
             ps_script = f"""
@@ -28,27 +24,5 @@ class Notifier:
             $notifier.Show($notification)
             """
             subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], capture_output=True, timeout=5)
-        except Exception as e:
-            # 백그라운드에서 알림 실패해도 전체 프로세스에 영향 없도록 pass
+        except Exception:
             pass
-
-    def _send_discord(self, title: str, message: str, status: str):
-        try:
-            color = 0x3498DB
-            if status == "SUCCESS":
-                color = 0x2ECC71
-            elif status in ("FAILED", "EXPIRED"):
-                color = 0xE74C3C
-
-            payload = {
-                "embeds": [
-                    {
-                        "title": title,
-                        "description": message,
-                        "color": color
-                    }
-                ]
-            }
-            httpx.post(self.discord_webhook_url, json=payload, timeout=5.0)
-        except Exception as e:
-            print(f"[디스코드 알림 실패]: {e}")

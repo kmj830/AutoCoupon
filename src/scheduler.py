@@ -15,7 +15,7 @@ class CouponScheduler:
     def __init__(self, config: Config):
         self.config = config
         self.storage = Storage(config.db_path)
-        self.notifier = Notifier(config.discord_webhook_url)
+        self.notifier = Notifier(config.enable_notifications)
         self.client = NexonClient(config.user_data_dir, headless=config.headless)
         self.providers: List[BaseCouponProvider] = self._setup_providers()
 

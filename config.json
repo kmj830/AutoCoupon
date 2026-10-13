@@ -1,11 +1,12 @@
 {
-  "poll_interval_seconds": 180,
+  "poll_interval_seconds": 300,
+  "enable_notifications": true,
   "active_providers": [
     "server",
-    "inven"
+    "inven",
+    "fmkorea"
   ],
   "server_url": "https://fc-coupon-api.alswnd0830.workers.dev/api/coupons",
-  "discord_webhook_url": "",
   "headless": true,
   "user_data_dir": "./data/browser_profile",
   "db_path": "./data/coupons.db"

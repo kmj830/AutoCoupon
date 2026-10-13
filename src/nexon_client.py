@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright, BrowserContext, Page, Dialog
 class NexonClient:
     """넥슨 FC 온라인 로그인 세션 관리 및 쿠폰 자동 등록 엔진"""
 
-    LOGIN_URL = "https://nid.nexon.com/web/login.aspx?redirect=https%3A%2F%2Ffconline.nexon.com%2Fmain%2Findex"
+    LOGIN_URL = "https://nxlogin.nexon.com/auth/login?redirect=https%3A%2F%2Ffconline.nexon.com%2Fmain%2Findex"
     MAIN_URL = "https://fconline.nexon.com/main/index"
     COUPON_URL = "https://fconline.nexon.com/coupon"
 
@@ -49,48 +49,67 @@ class NexonClient:
             context = self._launch_context(p, headless=False)
 
             page = context.pages[0] if context.pages else context.new_page()
-            page.goto(self.LOGIN_URL, wait_until="domcontentloaded")
+            try:
+                page.goto(self.LOGIN_URL, wait_until="domcontentloaded")
+            except Exception as e:
+                print(f"[페이지 접속 오류]: {e}")
 
             start_time = time.time()
             logged_in = False
 
             while time.time() - start_time < timeout_seconds:
                 try:
-                    # FC 온라인 메인 페이지 또는 로그인 상태 확인
-                    is_signed_in = page.evaluate("""() => {
-                        return (window.inface && window.inface.auth && typeof window.inface.auth.isSignedIn === 'function') 
-                            ? window.inface.auth.isSignedIn() 
-                            : false;
-                    }""")
-
-                    if is_signed_in:
-                        logged_in = True
+                    # 브라우저 창이 사용자에 의해 닫혔는지 확인
+                    if not context.pages or page.is_closed():
+                        # 쿠키로 로그인 성공 여부 최종 확인
+                        cookies = context.cookies("https://nexon.com")
+                        cookie_names = [c["name"] for c in cookies]
+                        if any(k in cookie_names for k in ["NEXON", "NPP", "ENC"]):
+                            logged_in = True
                         break
-                    
-                    # 넥슨 쿠키 확인 (NEXON 쿠키가 발급되었는지)
+
+                    # 넥슨 쿠키 확인
                     cookies = context.cookies("https://nexon.com")
                     cookie_names = [c["name"] for c in cookies]
-                    if "NEXON" in cookie_names or "NPP" in cookie_names:
-                        # 메인으로 이동해서 최종 동기화
-                        if "nid.nexon.com" in page.url:
-                            page.goto(self.MAIN_URL, wait_until="networkidle")
-                            time.sleep(2)
+                    has_auth_cookie = any(k in cookie_names for k in ["NEXON", "NPP", "ENC"])
+
+                    # 현재 페이지가 FC 온라인 메인 페이지로 돌아왔는지 확인
+                    cur_url = page.url
+                    if "fconline.nexon.com" in cur_url and "nxlogin" not in cur_url:
+                        is_signed_in = page.evaluate("""() => {
+                            if (window.NXMember && typeof window.NXMember.IsLogin === 'function' && window.NXMember.IsLogin()) return true;
+                            if (window.inface && window.inface.auth && typeof window.inface.auth.isSignedIn === 'function' && window.inface.auth.isSignedIn()) return true;
+                            return false;
+                        }""")
+                        if is_signed_in or has_auth_cookie:
                             logged_in = True
                             break
+                    elif has_auth_cookie and ("nxlogin" not in cur_url or "nxlogin.nexon.com/auth/login" not in cur_url):
+                        # 로그인 후 다른 넥슨 페이지로 이동한 경우 메인으로 이동
+                        page.goto(self.MAIN_URL, wait_until="domcontentloaded")
+                        time.sleep(2)
+                        logged_in = True
+                        break
 
                 except Exception:
                     pass
 
-                time.sleep(2)
+                time.sleep(1.5)
 
             if logged_in:
                 print(">> [성공] 넥슨 로그인 및 세션 저장이 완료되었습니다!")
                 time.sleep(2)
-                context.close()
+                try:
+                    context.close()
+                except Exception:
+                    pass
                 return True
             else:
-                print(">> [시간 초과] 로그인 제한 시간(5분)이 지났습니다.")
-                context.close()
+                print(">> [알림] 로그인 확인이 되지 않았습니다.")
+                try:
+                    context.close()
+                except Exception:
+                    pass
                 return False
 
     def is_logged_in(self) -> bool:
@@ -98,13 +117,19 @@ class NexonClient:
         with sync_playwright() as p:
             try:
                 context = self._launch_context(p, headless=True)
+                cookies = context.cookies("https://nexon.com")
+                cookie_names = [c["name"] for c in cookies]
+                if not any(k in cookie_names for k in ["NEXON", "NPP", "ENC"]):
+                    context.close()
+                    return False
+
                 page = context.pages[0] if context.pages else context.new_page()
-                page.goto(self.MAIN_URL, wait_until="networkidle", timeout=15000)
+                page.goto(self.MAIN_URL, wait_until="domcontentloaded", timeout=15000)
 
                 is_signed_in = page.evaluate("""() => {
-                    return (window.inface && window.inface.auth && typeof window.inface.auth.isSignedIn === 'function') 
-                        ? window.inface.auth.isSignedIn() 
-                        : false;
+                    if (window.NXMember && typeof window.NXMember.IsLogin === 'function' && window.NXMember.IsLogin()) return true;
+                    if (window.inface && window.inface.auth && typeof window.inface.auth.isSignedIn === 'function' && window.inface.auth.isSignedIn()) return true;
+                    return false;
                 }""")
                 context.close()
                 return bool(is_signed_in)

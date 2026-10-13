@@ -190,7 +190,7 @@ class AutoCouponGUI:
 
     def _check_scheduler_status(self):
         try:
-            res = subprocess.run(["schtasks", "/query", "/tn", TASK_NAME], capture_output=True, text=True)
+            res = subprocess.run(["schtasks", "/query", "/tn", TASK_NAME], capture_output=True)
             if res.returncode == 0:
                 self.sched_status_label.config(text="🟢 활성화됨 (5분마다 백그라운드 자동 실행)", fg="#16a34a")
             else:
@@ -202,11 +202,12 @@ class AutoCouponGUI:
         exe_path = sys.executable if getattr(sys, "frozen", False) else os.path.abspath(sys.argv[0])
         cmd = f'schtasks /create /tn "{TASK_NAME}" /tr "\"{exe_path}\" once" /sc MINUTE /mo 5 /f'
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, shell=True)
+            res = subprocess.run(cmd, capture_output=True, shell=True)
             if res.returncode == 0:
                 messagebox.showinfo("스케줄러 등록 완료", "5분마다 백그라운드에서 자동으로 쿠폰을 등록하도록 설정되었습니다!\n창을 닫아도 알아서 동작합니다.")
             else:
-                messagebox.showerror("등록 실패", f"스케줄러 등록에 실패했습니다:\n{res.stderr}")
+                err_msg = res.stderr.decode("cp949", errors="replace") if res.stderr else "알 수 없는 오류"
+                messagebox.showerror("등록 실패", f"스케줄러 등록에 실패했습니다:\n{err_msg}")
         except Exception as e:
             messagebox.showerror("오류", str(e))
         self._check_scheduler_status()
@@ -214,7 +215,7 @@ class AutoCouponGUI:
     def _disable_scheduler(self):
         cmd = f'schtasks /delete /tn "{TASK_NAME}" /f'
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, shell=True)
+            res = subprocess.run(cmd, capture_output=True, shell=True)
             messagebox.showinfo("스케줄러 해제", "5분 자동 등록 스케줄러가 해제되었습니다.")
         except Exception as e:
             messagebox.showerror("오류", str(e))

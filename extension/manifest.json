@@ -31,5 +31,13 @@
   "host_permissions": [
     "https://*.nexon.com/*",
     "https://fc-coupon-api.alswnd0830.workers.dev/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://fconline.nexon.com/coupon*"],
+      "js": ["content_script.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
   ]
 }

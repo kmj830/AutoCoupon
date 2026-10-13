@@ -114,9 +114,10 @@ async function applySingleCoupon(code) {
     // 탭 로딩 완료 대기
     await waitForTabComplete(tab.id, 10000);
 
-    // 페이지 내 등록 스크립트 주입 및 실행
+    // 페이지 내 등록 스크립트 주입 및 실행 (world: MAIN을 지정하여 웹페이지와 동일한 컨텍스트에서 실행)
     const injectionResults = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
+      world: "MAIN",
       func: inPageRegister,
       args: [cleanCode]
     });
@@ -183,45 +184,59 @@ function waitForTabComplete(tabId, timeoutMs) {
   });
 }
 
-// 7. fconline.nexon.com/coupon 페이지 내부에서 실행될 함수
+// 7. fconline.nexon.com/coupon 페이지 내부에서 실행될 함수 (MAIN World에서 실행)
 function inPageRegister(code) {
   return new Promise((resolve) => {
     let alertMsg = "";
     
-    // alert 가로채기
-    const origAlert = window.alert;
+    // 이전에 발생한 alert 메시지가 있다면 수집
+    if (window.__fcAlerts && window.__fcAlerts.length > 0) {
+      alertMsg = window.__fcAlerts[window.__fcAlerts.length - 1];
+    }
+
+    // 1. window.alert 가로채기 (팝업 없이 메시지만 저장하고 0초 만에 닫음)
     window.alert = function (msg) {
       alertMsg = String(msg);
-      console.log("[InPage Alert]:", msg);
+      console.log("[AutoCoupon] Alert 가로채기 완료 (자동 닫힘):", msg);
     };
 
-    // 1. 비로그인 상태 감지
+    // 2. window.confirm 가로채기 ('등록하시겠습니까?' 확인창 뜨면 자동으로 [확인=true] 클릭)
+    window.confirm = function (msg) {
+      alertMsg = String(msg);
+      console.log("[AutoCoupon] Confirm 가로채기 완료 (자동 확인 클릭):", msg);
+      return true;
+    };
+
+    // 3. window.prompt 가로채기
+    window.prompt = function () {
+      return "";
+    };
+
+    // 비로그인 상태 감지
     const bodyText = document.body ? document.body.innerText : "";
     if (bodyText.includes("로그인 후 이용") || alertMsg.includes("로그인")) {
-      window.alert = origAlert;
       return resolve({ status: "NEED_LOGIN", message: "로그인 후 이용 가능합니다." });
     }
 
-    // 2. 입력창 찾기
+    // 입력창 찾기
     const input = document.querySelector("input[name='strCouponCode'], input#strCouponCode, input[type='text'], input:not([type])");
     if (!input) {
-      window.alert = origAlert;
       if (alertMsg.includes("로그인")) {
         return resolve({ status: "NEED_LOGIN", message: alertMsg });
       }
       return resolve({ status: "FAILED", message: "쿠폰 입력창을 찾을 수 없습니다." });
     }
 
-    // 3. 쿠폰 코드 입력
+    // 쿠폰 코드 입력
     input.value = code;
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
 
-    // 4. 등록 버튼 찾기 및 클릭
+    // 등록 버튼 찾기 및 클릭
     const buttons = Array.from(document.querySelectorAll("button, a, input[type='submit'], input[type='button']"));
     const submitBtn = buttons.find(b => {
       const text = (b.innerText || b.value || "").trim();
-      return text.includes("등록") || text.includes("확인");
+      return text.includes("등록") || text === "확인";
     });
 
     if (submitBtn) {
@@ -232,15 +247,31 @@ function inPageRegister(code) {
       else input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 13, bubbles: true }));
     }
 
-    // 5. 응답 alert 또는 DOM 대기 (최대 3초)
+    // 4. 모달/레이어 팝업의 [확인] 버튼 및 alert 메시지 자동 감지 루프
     let waited = 0;
     const interval = setInterval(() => {
       waited += 200;
+
+      // HTML 레이어 팝업 / 모달 내에 [확인] / [닫기] 버튼이 뜨면 자동으로 클릭!
+      const modalBtns = Array.from(document.querySelectorAll(
+        ".popup button, .popup a, .modal button, .layer button, .layer a, [class*='pop'] button, [class*='modal'] button, [class*='dialog'] button, button.btn_confirm, button.btn_ok, a.btn_confirm, a.btn_ok"
+      )).filter(el => {
+        const t = (el.innerText || el.value || "").trim();
+        return (t === "확인" || t === "닫기" || t === "OK") && el !== submitBtn && el.offsetParent !== null;
+      });
+
+      if (modalBtns.length > 0) {
+        modalBtns.forEach(btn => {
+          try {
+            console.log("[AutoCoupon] 모달 레이어 확인 버튼 자동 클릭!");
+            btn.click();
+          } catch (_) {}
+        });
+      }
+
       if (alertMsg || waited >= 3000) {
         clearInterval(interval);
-        window.alert = origAlert;
-
-        const msg = alertMsg || "등록 완료 (응답 없음)";
+        const msg = alertMsg || "등록 완료";
         let status = "SUCCESS";
         if (msg.includes("이미 사용") || msg.includes("이미 등록") || msg.includes("사용한")) {
           status = "ALREADY_USED";

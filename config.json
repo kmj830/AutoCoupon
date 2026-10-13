@@ -1,0 +1,12 @@
+{
+  "poll_interval_seconds": 180,
+  "active_providers": [
+    "server",
+    "inven"
+  ],
+  "server_url": "https://fc-coupon-api.alswnd0830.workers.dev/api/coupons",
+  "discord_webhook_url": "",
+  "headless": true,
+  "user_data_dir": "./data/browser_profile",
+  "db_path": "./data/coupons.db"
+}

@@ -1,0 +1,22 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Sensitive user data (MUST NOT COMMIT - contains login session & cookies)
+data/
+*.db
+
+# Build artifacts
+dist/
+build/
+*.spec
+
+# IDE & OS
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+install.cmd

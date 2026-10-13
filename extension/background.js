@@ -305,15 +305,28 @@ function inPageRegister(code) {
         clearInterval(interval);
         const msg = alertMsg || "등록 완료";
         let status = "SUCCESS";
-        if (msg.includes("이미 사용") || msg.includes("이미 등록") || msg.includes("사용한")) {
-          status = "ALREADY_USED";
+
+        if (
+          msg.includes("실패") ||
+          msg.includes("아닙니다") ||
+          msg.includes("3014") ||
+          msg.includes("일치하지") ||
+          msg.includes("존재하지") ||
+          msg.includes("잘못된") ||
+          msg.includes("확인해") ||
+          msg.includes("오류")
+        ) {
+          status = "INVALID";
         } else if (msg.includes("만료") || msg.includes("유효기간")) {
           status = "EXPIRED";
-        } else if (msg.includes("일치하지") || msg.includes("존재하지") || msg.includes("잘못된") || msg.includes("확인해")) {
-          status = "INVALID";
+        } else if (msg.includes("이미 사용") || msg.includes("이미 등록") || msg.includes("사용한")) {
+          status = "ALREADY_USED";
         } else if (msg.includes("로그인")) {
           status = "NEED_LOGIN";
+        } else if (!msg.includes("지급") && !msg.includes("정상") && !msg.includes("완료")) {
+          status = "UNKNOWN";
         }
+
         resolve({ status, message: msg });
       }
     }, 200);

@@ -88,11 +88,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // 6. 기록 비우기
+  // 6. 기록 및 캐시 비우기 (처음부터 다시 테스트 가능)
   btnClearHistory.addEventListener("click", async () => {
-    if (confirm("등록 이력을 비우시겠습니까?")) {
-      await chrome.storage.local.set({ history: [] });
+    if (confirm("등록 기록과 캐시를 모두 초기화하시겠습니까?\n초기화 후 처음부터 다시 테스트할 수 있습니다.")) {
+      await chrome.storage.local.set({ history: [], registered_codes: {} });
       renderHistory([]);
+      alert("모든 등록 기록과 캐시가 초기화되었습니다!\n이제 [지금 즉시 확인]을 눌러 처음부터 다시 테스트하실 수 있습니다.");
     }
   });
 

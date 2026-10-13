@@ -18,7 +18,10 @@ class NexonClient:
     def _launch_context(self, p, headless: bool):
         """Chrome -> Edge -> ms-playwright 순서로 브라우저 실행"""
         os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", os.path.expandvars(r"%LOCALAPPDATA%\ms-playwright"))
-        args = ["--disable-blink-features=AutomationControlled"]
+        args = [
+            "--disable-blink-features=AutomationControlled",
+            "--test-type"
+        ]
         if not headless:
             args.append("--window-size=1280,800")
 
@@ -27,7 +30,8 @@ class NexonClient:
                 kwargs = {
                     "user_data_dir": self.user_data_dir,
                     "headless": headless,
-                    "args": args
+                    "args": args,
+                    "chromium_sandbox": True
                 }
                 if channel:
                     kwargs["channel"] = channel

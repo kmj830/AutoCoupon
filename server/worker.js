@@ -26,11 +26,11 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
-    // [API] 쿠폰 목록 조회 (클라이언트가 1시간마다 조회)
+    // [API] 쿠폰 목록 조회 (클라이언트가 5분마다 조회)
     if (url.pathname === "/api/coupons" && request.method === "GET") {
-      // 마지막 크롤링 후 30분 이상 지났으면 자동 크롤링 수행
+      // 마지막 크롤링 후 5분 이상 지났으면 즉시 최신 크롤링 수행
       const lastCrawl = await getLastCrawlTime(env);
-      if (Date.now() - lastCrawl > 30 * 60 * 1000) {
+      if (Date.now() - lastCrawl > 5 * 60 * 1000) {
         ctx.waitUntil(crawlAllSources(env));
       }
 

@@ -197,6 +197,38 @@ async function crawlAllSources(env) {
     console.error("공식 공지 크롤링 실패:", e);
   }
 
+  // 3. 에펨코리아 FC 온라인 게시판 (쿠폰 탭)
+  try {
+    const fmkoreaUrl = "https://www.fmkorea.com/index.php?mid=fifa_online&category=5746170222";
+    const res = await fetch(fmkoreaUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+      },
+    });
+
+    if (res.ok) {
+      const html = await res.text();
+      // 게시글 링크 추출 (document_srl 포함된 링크)
+      const pattern = /<a[^>]+href=["'][^"']*document_srl=([0-9]+)[^"']*["'][^>]*>(.*?)<\/a>/gis;
+      const matches = [...html.matchAll(pattern)];
+
+      for (const match of matches) {
+        let title = match[2].replace(/<[^>]+>/g, "").trim();
+        if (title.includes("공지") || title.includes("팁글모음") || title.includes("안내") || /^\d+$/.test(title)) continue;
+
+        for (let p of title.split(/[\n/,|]/)) {
+          p = p.replace(/^(?:\d+차\s*(?:쿠폰)?|FC\s*PRO\s*(?:쿠폰)?|쿠폰\s*코드|쿠폰|코드|K리그)\s*[:\-]?\s*/i, "").trim();
+          const code = p.replace(/[^가-힣a-zA-Z0-9]/g, "");
+          if (isValidCoupon(code)) discovered.push(code);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("에펨코리아 크롤링 실패:", e);
+  }
+
   // 기존 목록과 병합 (중복 제거)
   const current = await getCoupons(env);
   const set = new Set(current);
@@ -213,7 +245,10 @@ async function crawlAllSources(env) {
 
 function isValidCoupon(code) {
   if (code.length < 4 || code.length > 30) return false;
-  const noise = ["안내드립니다", "감사합니다", "댓글", "추천", "쿠폰모음", "정기점검", "사전안내", "오류안내"];
+  const noise = [
+    "안내드립니다", "감사합니다", "댓글", "추천", "쿠폰모음", 
+    "정기점검", "사전안내", "오류안내", "이상한데", "3개", "CHAMPIONS"
+  ];
   if (noise.some((n) => code.includes(n))) return false;
   if (code.endsWith("쿠폰") && code.length <= 8 && !/\d/.test(code)) return false;
   return true;
@@ -281,7 +316,7 @@ function renderAdminHtml() {
   <h1>⚽ FC 온라인 쿠폰 배포 서버 <span style="font-size: 13px; color: #10b981; font-weight: normal;">(v1.1 GitHub 자동 배포 연동됨)</span></h1>
 
   <div class="card">
-    <button class="btn-sync" onclick="triggerCrawl()">🔄 인벤 + 공식홈페이지 실시간 자동 수집</button>
+    <button class="btn-sync" onclick="triggerCrawl()">🔄 인벤 + 펨코 + 공식홈 실시간 자동 수집</button>
     <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 15px 0;">
     <h3>수동 쿠폰 추가</h3>
     <input type="password" id="pw" placeholder="관리자 비밀번호 입력">
@@ -328,7 +363,7 @@ function renderAdminHtml() {
       } catch (e) {
         alert('수집 실패: ' + e.message);
       } finally {
-        btn.innerText = '🔄 인벤 + 공식홈페이지 실시간 자동 수집';
+        btn.innerText = '🔄 인벤 + 펨코 + 공식홈 실시간 자동 수집';
       }
     }
 

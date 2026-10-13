@@ -7,6 +7,7 @@ from .nexon_client import NexonClient
 from .providers.base import BaseCouponProvider
 from .providers.inven_provider import InvenProvider
 from .providers.server_provider import ServerProvider
+from .providers.fmkorea_provider import FmKoreaProvider
 
 class CouponScheduler:
     """주기적 크롤링 및 자동 등록 스케줄러"""
@@ -27,6 +28,10 @@ class CouponScheduler:
         # 인벤 크롤러 프로바이더
         if "inven" in self.config.active_providers:
             providers.append(InvenProvider())
+
+        # 에펨코리아 크롤러 프로바이더
+        if "fmkorea" in self.config.active_providers:
+            providers.append(FmKoreaProvider())
 
         return providers
 

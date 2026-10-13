@@ -278,7 +278,7 @@ function renderAdminHtml() {
   </style>
 </head>
 <body>
-  <h1>⚽ FC 온라인 쿠폰 배포 서버</h1>
+  <h1>⚽ FC 온라인 쿠폰 배포 서버 <span style="font-size: 13px; color: #10b981; font-weight: normal;">(v1.1 GitHub 자동 배포 연동됨)</span></h1>
 
   <div class="card">
     <button class="btn-sync" onclick="triggerCrawl()">🔄 인벤 + 공식홈페이지 실시간 자동 수집</button>

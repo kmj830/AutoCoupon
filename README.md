@@ -4,6 +4,17 @@
 
 ---
 
+### 📥 원클릭 설치 파일 다운로드
+
+[![Download Installer](https://img.shields.io/badge/⬇️_설치_파일_다운로드-AutoCoupon__Setup.exe-00C853?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/kmj830/AutoCoupon/raw/main/installer_output/AutoCoupon_Setup.exe)
+
+> 👉 **[여기를 클릭하여 최신 설치 프로그램 (AutoCoupon_Setup.exe) 바로 다운로드](https://github.com/kmj830/AutoCoupon/raw/main/installer_output/AutoCoupon_Setup.exe)**
+> *(위 링크 또는 버튼을 누르면 설치 파일이 즉시 다운로드됩니다!)*
+>
+> *(인텔리제이/로컬에서 바로 실행하실 경우: [`installer_output/AutoCoupon_Setup.exe`](installer_output/AutoCoupon_Setup.exe))*
+
+---
+
 ## 🌟 주요 특징
 
 1. **원클릭 인스톨러 (`AutoCoupon_Setup.exe`)**:

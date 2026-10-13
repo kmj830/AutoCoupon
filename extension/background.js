@@ -355,7 +355,37 @@ function inPageRegister(code) {
         const msg = alertMsg;
         let status = "FAILED";
 
+        // 1) 성공 판정
         if (
+          msg.includes("정상적으로") ||
+          msg.includes("지급") ||
+          msg.includes("완료되었습니다") ||
+          msg.includes("보관함") ||
+          msg.includes("수령")
+        ) {
+          status = "SUCCESS";
+        }
+        // 2) 이미 사용/등록된 쿠폰 판정 (실패 문구보다 먼저 검사해야 다른 유저용 쿠폰이 잘못 삭제되지 않음!)
+        else if (
+          msg.includes("이미 사용") ||
+          msg.includes("이미 등록") ||
+          msg.includes("사용한") ||
+          msg.includes("이미 수령") ||
+          msg.includes("1회만") ||
+          msg.includes("중복")
+        ) {
+          status = "ALREADY_USED";
+        }
+        // 3) 로그인 필요
+        else if (msg.includes("로그인")) {
+          status = "NEED_LOGIN";
+        }
+        // 4) 만료된 쿠폰
+        else if (msg.includes("만료") || msg.includes("유효기간")) {
+          status = "EXPIRED";
+        }
+        // 5) 코드 불일치 / 무효 쿠폰
+        else if (
           msg.includes("실패") ||
           msg.includes("아닙니다") ||
           msg.includes("3014") ||
@@ -366,20 +396,6 @@ function inPageRegister(code) {
           msg.includes("오류")
         ) {
           status = "INVALID";
-        } else if (msg.includes("만료") || msg.includes("유효기간")) {
-          status = "EXPIRED";
-        } else if (msg.includes("이미 사용") || msg.includes("이미 등록") || msg.includes("사용한")) {
-          status = "ALREADY_USED";
-        } else if (msg.includes("로그인")) {
-          status = "NEED_LOGIN";
-        } else if (
-          msg.includes("정상적으로") ||
-          msg.includes("지급") ||
-          msg.includes("완료되었습니다") ||
-          msg.includes("보관함") ||
-          msg.includes("수령")
-        ) {
-          status = "SUCCESS";
         } else {
           status = "UNKNOWN";
         }

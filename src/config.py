@@ -1,19 +1,25 @@
-import json
 import os
+import sys
+import json
 from dataclasses import dataclass, field
 from typing import List
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
+if getattr(sys, "frozen", False):
+    BASE_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 
 @dataclass
 class Config:
     poll_interval_seconds: int = 180
-    active_providers: List[str] = field(default_factory=lambda: ["inven", "arcalive"])
-    server_url: str = ""
+    active_providers: List[str] = field(default_factory=lambda: ["server", "inven", "fmkorea"])
+    server_url: str = "https://fc-coupon-api.alswnd0830.workers.dev/api/coupons"
     discord_webhook_url: str = ""
     headless: bool = True
-    user_data_dir: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "browser_profile")
-    db_path: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "coupons.db")
+    user_data_dir: str = os.path.join(BASE_DIR, "data", "browser_profile")
+    db_path: str = os.path.join(BASE_DIR, "data", "coupons.db")
 
 def load_config() -> Config:
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)

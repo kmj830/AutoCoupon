@@ -15,6 +15,27 @@ class NexonClient:
         self.headless = headless
         os.makedirs(self.user_data_dir, exist_ok=True)
 
+    def _launch_context(self, p, headless: bool):
+        """Chrome -> Edge -> ms-playwright 순서로 브라우저 실행"""
+        os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", os.path.expandvars(r"%LOCALAPPDATA%\ms-playwright"))
+        args = ["--disable-blink-features=AutomationControlled"]
+        if not headless:
+            args.append("--window-size=1280,800")
+
+        for channel in ["chrome", "msedge", None]:
+            try:
+                kwargs = {
+                    "user_data_dir": self.user_data_dir,
+                    "headless": headless,
+                    "args": args
+                }
+                if channel:
+                    kwargs["channel"] = channel
+                return p.chromium.launch_persistent_context(**kwargs)
+            except Exception:
+                continue
+        raise RuntimeError("크롬 또는 엣지 브라우저를 실행할 수 없습니다.")
+
     def interactive_login(self, timeout_seconds: int = 300) -> bool:
         """최초 1회 사용자가 직접 브라우저에서 로그인할 수 있도록 창을 띄우고 세션을 저장"""
         print("\n=======================================================")
@@ -25,16 +46,7 @@ class NexonClient:
         print("=======================================================\n")
 
         with sync_playwright() as p:
-            # 브라우저 창을 띄워 사용자 입력을 받음
-            context = p.chromium.launch_persistent_context(
-                user_data_dir=self.user_data_dir,
-                headless=False,
-                channel="chrome", # 시스템 크롬이 있으면 크롬 사용, 없으면 다운로드된 chromium fallback
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--window-size=1280,800"
-                ]
-            )
+            context = self._launch_context(p, headless=False)
 
             page = context.pages[0] if context.pages else context.new_page()
             page.goto(self.LOGIN_URL, wait_until="domcontentloaded")
@@ -85,11 +97,7 @@ class NexonClient:
         """저장된 세션 프로필로 현재 로그인이 유효한지 확인"""
         with sync_playwright() as p:
             try:
-                context = p.chromium.launch_persistent_context(
-                    user_data_dir=self.user_data_dir,
-                    headless=True,
-                    args=["--disable-blink-features=AutomationControlled"]
-                )
+                context = self._launch_context(p, headless=True)
                 page = context.pages[0] if context.pages else context.new_page()
                 page.goto(self.MAIN_URL, wait_until="networkidle", timeout=15000)
 
@@ -124,11 +132,7 @@ class NexonClient:
 
         with sync_playwright() as p:
             try:
-                context = p.chromium.launch_persistent_context(
-                    user_data_dir=self.user_data_dir,
-                    headless=self.headless,
-                    args=["--disable-blink-features=AutomationControlled"]
-                )
+                context = self._launch_context(p, headless=self.headless)
                 page = context.pages[0] if context.pages else context.new_page()
                 page.on("dialog", handle_dialog)
 

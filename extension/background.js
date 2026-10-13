@@ -264,27 +264,66 @@ function inPageRegister(code) {
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
 
-    // 등록 버튼 찾기 및 클릭
-    const buttons = Array.from(document.querySelectorAll("button, a, input[type='submit'], input[type='button']"));
+    // 4. 등록 버튼 찾기 및 다각도 클릭 트리거
+    const buttons = Array.from(document.querySelectorAll("button, a, input[type='submit'], input[type='button'], input[type='image']"));
     const submitBtn = buttons.find(b => {
-      const text = (b.innerText || b.value || "").trim();
-      return text.includes("등록") || text === "확인";
+      const text = (b.innerText || b.value || b.getAttribute('title') || b.getAttribute('alt') || "").trim();
+      const cls = b.className || "";
+      const id = b.id || "";
+      return text.includes("등록") || text === "확인" || cls.includes("submit") || cls.includes("btn_reg") || id.includes("submit") || id.includes("btnReg");
     });
 
     if (submitBtn) {
       submitBtn.click();
+      submitBtn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+      if (window.$ && typeof window.$(submitBtn).trigger === 'function') {
+        window.$(submitBtn).trigger('click');
+      }
+      const onclickAttr = submitBtn.getAttribute("onclick");
+      if (onclickAttr && !onclickAttr.startsWith("javascript:void") && !onclickAttr.startsWith("return false")) {
+        try { new Function(onclickAttr).call(submitBtn); } catch (_) {}
+      }
     } else {
       const form = input.closest("form");
-      if (form) form.submit();
-      else input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 13, bubbles: true }));
+      if (form) {
+        if (typeof form.onsubmit === 'function') form.onsubmit();
+        form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      } else {
+        input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 13, bubbles: true }));
+      }
     }
 
-    // 4. 모달/레이어 팝업의 [확인] 버튼 및 alert 메시지 자동 감지 루프
+    // 5. 모달/레이어 팝업 감지, 텍스트 수집 후 자동 닫기 루프
     let waited = 0;
     const interval = setInterval(() => {
       waited += 200;
 
-      // HTML 레이어 팝업 / 모달 내에 [확인] / [닫기] 버튼이 뜨면 자동으로 클릭!
+      // 1) HTML 레이어 팝업이나 모달이 떴다면 먼저 그 안의 텍스트(메시지)를 수집!
+      const modalContainers = Array.from(document.querySelectorAll(
+        ".popup, .modal, .layer, [class*='pop'], [class*='modal'], [class*='dialog'], [class*='alert']"
+      )).filter(el => el.offsetParent !== null);
+
+      for (const container of modalContainers) {
+        const text = container.innerText.trim();
+        if (
+          text &&
+          (text.includes("쿠폰") ||
+            text.includes("지급") ||
+            text.includes("실패") ||
+            text.includes("완료") ||
+            text.includes("3014") ||
+            text.includes("만료") ||
+            text.includes("사용한") ||
+            text.includes("아닙니다"))
+        ) {
+          if (!alertMsg) {
+            alertMsg = text;
+            console.log("[AutoCoupon] HTML 모달 텍스트 감지 완료:", text);
+          }
+        }
+      }
+
+      // 2) 텍스트 수집 후 모달 내 [확인] / [닫기] 버튼 클릭하여 자동 닫기
       const modalBtns = Array.from(document.querySelectorAll(
         ".popup button, .popup a, .modal button, .layer button, .layer a, [class*='pop'] button, [class*='modal'] button, [class*='dialog'] button, button.btn_confirm, button.btn_ok, a.btn_confirm, a.btn_ok"
       )).filter(el => {
@@ -301,10 +340,20 @@ function inPageRegister(code) {
         });
       }
 
-      if (alertMsg || waited >= 3000) {
+      // 3) 결과 판정 (최대 4초 대기)
+      if (alertMsg || waited >= 4000) {
         clearInterval(interval);
-        const msg = alertMsg || "등록 완료";
-        let status = "SUCCESS";
+
+        // 아무런 메시지도 감지되지 않았다면 절대 성공이 아님! (가짜 성공 판정 원천 차단)
+        if (!alertMsg) {
+          return resolve({
+            status: "FAILED",
+            message: "응답 없음 (넥슨 서버에서 등록 결과를 받지 못했습니다)"
+          });
+        }
+
+        const msg = alertMsg;
+        let status = "FAILED";
 
         if (
           msg.includes("실패") ||
@@ -323,7 +372,15 @@ function inPageRegister(code) {
           status = "ALREADY_USED";
         } else if (msg.includes("로그인")) {
           status = "NEED_LOGIN";
-        } else if (!msg.includes("지급") && !msg.includes("정상") && !msg.includes("완료")) {
+        } else if (
+          msg.includes("정상적으로") ||
+          msg.includes("지급") ||
+          msg.includes("완료되었습니다") ||
+          msg.includes("보관함") ||
+          msg.includes("수령")
+        ) {
+          status = "SUCCESS";
+        } else {
           status = "UNKNOWN";
         }
 

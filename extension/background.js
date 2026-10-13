@@ -68,8 +68,8 @@ async function checkAndApplyCoupons() {
       return { success: true, count: 0 };
     }
 
-    // 아직 등록 시도하지 않은 새 쿠폰만 필터링
-    const targetCodes = codes.filter(c => !registered_codes[c]);
+    // 아직 등록 시도하지 않은 새 쿠폰만 필터링 (한 번에 최대 10개)
+    const targetCodes = codes.filter(c => !registered_codes[c]).slice(0, 10);
 
     if (targetCodes.length === 0) {
       console.log("[AutoCoupon] 모든 최신 쿠폰이 이미 처리되었습니다.");
@@ -77,18 +77,38 @@ async function checkAndApplyCoupons() {
       return { success: true, count: 0 };
     }
 
-    console.log(`[AutoCoupon] ${targetCodes.length}개의 신규 쿠폰을 등록합니다:`, targetCodes);
+    console.log(`[AutoCoupon] ${targetCodes.length}개의 신규 쿠폰 일괄 등록 시작:`, targetCodes);
 
+    // ⭐ 탭 1개만 백그라운드로 열어서 모든 쿠폰을 순서대로 등록 (창 수십 개 깜빡임 완전 방지!)
+    let tab = null;
     let successCount = 0;
-    for (const code of targetCodes) {
-      const result = await applySingleCoupon(code);
-      if (result.status === "SUCCESS") successCount++;
-      if (result.status === "NEED_LOGIN") {
-        sendToast("로그인 필요", "넥슨 웹 로그인이 필요합니다. 홈페이지에서 로그인해 주세요.");
-        break; // 로그인 풀렸으면 중단
+
+    try {
+      tab = await chrome.tabs.create({ url: COUPON_URL, active: false });
+      await waitForTabComplete(tab.id, 10000);
+
+      for (const code of targetCodes) {
+        const result = await executeInTab(tab.id, code);
+
+        // 만료되었거나 존재하지 않는 쿠폰은 서버로 신고하여 즉시 영구 삭제!
+        if (result.status === "EXPIRED" || result.status === "INVALID") {
+          reportFailedCoupon(code, result.status);
+        }
+
+        if (result.status === "SUCCESS") {
+          successCount++;
+        } else if (result.status === "NEED_LOGIN") {
+          sendToast("⚠️ 로그인 필요", "넥슨 웹 로그인이 필요합니다.");
+          break; // 비로그인이면 중단
+        }
+
+        // 쿠폰 간 1초 대기
+        await new Promise(r => setTimeout(r, 1000));
       }
-      // 짧은 대기 시간
-      await new Promise(r => setTimeout(r, 1000));
+    } finally {
+      if (tab && tab.id) {
+        try { await chrome.tabs.remove(tab.id); } catch (_) {}
+      }
     }
 
     await chrome.storage.local.set({ is_running: false });
@@ -101,22 +121,36 @@ async function checkAndApplyCoupons() {
   }
 }
 
-// 5. 단일 쿠폰 등록 로직 (백그라운드 탭 활용)
+// 5. 단일 쿠폰 등록 로직 (수동 입력 시)
 async function applySingleCoupon(code) {
   const cleanCode = code.trim();
-  console.log(`[AutoCoupon] 쿠폰 등록 시도: ${cleanCode}`);
-
   let tab = null;
   try {
-    // 사용자를 방해하지 않는 백그라운드 탭 생성 (active: false)
     tab = await chrome.tabs.create({ url: COUPON_URL, active: false });
-
-    // 탭 로딩 완료 대기
     await waitForTabComplete(tab.id, 10000);
 
-    // 페이지 내 등록 스크립트 주입 및 실행 (world: MAIN을 지정하여 웹페이지와 동일한 컨텍스트에서 실행)
+    const result = await executeInTab(tab.id, cleanCode);
+
+    if (result.status === "EXPIRED" || result.status === "INVALID") {
+      reportFailedCoupon(cleanCode, result.status);
+    }
+
+    return result;
+  } catch (e) {
+    return { status: "FAILED", message: e.message };
+  } finally {
+    if (tab && tab.id) {
+      try { await chrome.tabs.remove(tab.id); } catch (_) {}
+    }
+  }
+}
+
+// 탭 내에서 등록 실행 헬퍼
+async function executeInTab(tabId, cleanCode) {
+  console.log(`[AutoCoupon] 쿠폰 등록 실행: ${cleanCode}`);
+  try {
     const injectionResults = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
+      target: { tabId },
       world: "MAIN",
       func: inPageRegister,
       args: [cleanCode]
@@ -127,34 +161,32 @@ async function applySingleCoupon(code) {
       message: "결과 수신 실패"
     };
 
-    // 기록 저장
     await recordHistory(cleanCode, result.status, result.message);
 
-    // 알림 발송
     const { notify } = await chrome.storage.local.get("notify");
     if (notify !== false) {
       if (result.status === "SUCCESS") {
         sendToast("🎉 쿠폰 등록 성공!", `[${cleanCode}] 정상적으로 지급되었습니다.`);
-      } else if (result.status === "ALREADY_USED") {
-        // 이미 사용한 쿠폰은 무음 처리하거나 가벼운 알림
-      } else if (result.status === "NEED_LOGIN") {
-        sendToast("⚠️ 로그인 필요", "넥슨 로그인이 필요합니다.");
       }
     }
-
     return result;
-
   } catch (e) {
-    console.error(`[AutoCoupon] ${cleanCode} 등록 중 예외:`, e);
     await recordHistory(cleanCode, "FAILED", e.message);
     return { status: "FAILED", message: e.message };
-  } finally {
-    // 탭 닫기
-    if (tab && tab.id) {
-      try {
-        await chrome.tabs.remove(tab.id);
-      } catch (_) {}
-    }
+  }
+}
+
+// 실패/만료 쿠폰 서버 자동 신고 (다른 유저에게 전송 방지)
+async function reportFailedCoupon(code, status) {
+  try {
+    await fetch("https://fc-coupon-api.alswnd0830.workers.dev/api/coupons/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, status })
+    });
+    console.log(`[AutoCoupon] 실패 쿠폰 서버 자동 제외 신고 완료: ${code} (${status})`);
+  } catch (e) {
+    console.error("[AutoCoupon] 서버 신고 전송 실패:", e);
   }
 }
 

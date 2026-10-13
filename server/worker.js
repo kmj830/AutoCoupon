@@ -97,24 +97,26 @@ export default {
       }
     }
 
-    // [API] 쿠폰 삭제
-    if (url.pathname === "/api/coupons" && request.method === "DELETE") {
+    // [API] 실패/만료 쿠폰 자동 신고 및 즉시 영구 제외
+    if (url.pathname === "/api/coupons/report" && request.method === "POST") {
       try {
-        const body = await request.json();
-        if (env.ADMIN_PASSWORD && body.password !== env.ADMIN_PASSWORD) {
-          return new Response(JSON.stringify({ error: "관리자 비밀번호가 일치하지 않습니다." }), {
-            status: 403,
-            headers: corsHeaders,
+        const body = await request.json().catch(() => ({}));
+        const code = (body.code || "").trim();
+        const status = body.status; // EXPIRED, INVALID
+        if (code && (status === "EXPIRED" || status === "INVALID")) {
+          // 1. 활성 쿠폰 목록에서 즉시 제거
+          let coupons = await getCoupons(env);
+          coupons = coupons.filter((c) => c !== code);
+          await saveCoupons(env, coupons);
+
+          // 2. 블랙리스트에 추가 (크롤러가 다시 긁어오지 않도록 차단)
+          await addToBlacklist(env, code);
+
+          return new Response(JSON.stringify({ success: true, removed: code, remaining: coupons.length }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-
-        let coupons = await getCoupons(env);
-        coupons = coupons.filter((c) => c !== body.code);
-        await saveCoupons(env, coupons);
-
-        return new Response(JSON.stringify({ success: true, coupons }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(JSON.stringify({ success: false, message: "무효한 신고" }), { headers: corsHeaders });
       } catch (err) {
         return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
       }
@@ -229,14 +231,17 @@ async function crawlAllSources(env) {
     console.error("에펨코리아 크롤링 실패:", e);
   }
 
-  // 기존 목록과 병합 (중복 제거)
+  // 기존 목록과 병합 (블랙리스트 제외)
+  const blacklist = await getBlacklist(env);
   const current = await getCoupons(env);
   const set = new Set(current);
   for (const code of discovered) {
-    set.add(code);
+    if (!blacklist.has(code)) {
+      set.add(code);
+    }
   }
 
-  const updated = Array.from(set);
+  const updated = Array.from(set).filter((c) => !blacklist.has(c));
   await saveCoupons(env, updated);
   await setLastCrawlTime(env, Date.now());
 
@@ -244,21 +249,48 @@ async function crawlAllSources(env) {
 }
 
 function isValidCoupon(code) {
-  if (code.length < 4 || code.length > 30) return false;
+  if (!code || code.length < 4 || code.length > 25) return false;
+  // 게시글 제목 등에 흔히 쓰이는 문장형 단어 및 노이즈 완벽 차단
   const noise = [
     "안내드립니다", "감사합니다", "댓글", "추천", "쿠폰모음", 
-    "정기점검", "사전안내", "오류안내", "이상한데", "3개", "CHAMPIONS"
+    "정기점검", "사전안내", "오류안내", "이상한데", "3개", "CHAMPIONS",
+    "싫어요", "누구", "시간", "수정", "완료", "기회", "가려라", "마지막",
+    "페이지", "승부", "한걸음", "결승", "남은", "모음", "시작", "입니다",
+    "진짜", "어쩌구", "알려", "확인", "등록", "팁글", "공지", "DAY", "day"
   ];
   if (noise.some((n) => code.includes(n))) return false;
-  if (code.endsWith("쿠폰") && code.length <= 8 && !/\d/.test(code)) return false;
+  
+  // 8자 이상인데 숫자가 전혀 없는 순수 한글 문장형 제목 제외 (FC 온라인 쿠폰은 통상 영문/숫자 혼용)
+  if (/^[가-힣]{8,}$/.test(code) && !code.endsWith("쿠폰")) return false;
+  
   return true;
 }
 
 // ==========================================
 // 저장소 관리 헬퍼
 // ==========================================
-let memoryCoupons = ["한글날슛패스골MIX109", "대한민국팀LETSGO111"];
+let memoryCoupons = ["한글날슛패스골MIX109", "대한민국팀LETSGO111", "지지않아GOGO333", "FIGHT싸워555", "베네수엘라전베네핏쿠폰"];
+let memoryBlacklist = new Set();
 let memoryLastCrawl = 0;
+
+async function getBlacklist(env) {
+  if (env && env.COUPONS_KV) {
+    const raw = await env.COUPONS_KV.get("blacklist_coupons");
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  }
+  return memoryBlacklist;
+}
+
+async function addToBlacklist(env, code) {
+  const bl = await getBlacklist(env);
+  bl.add(code);
+  const arr = Array.from(bl);
+  if (env && env.COUPONS_KV) {
+    await env.COUPONS_KV.put("blacklist_coupons", JSON.stringify(arr));
+  } else {
+    memoryBlacklist = bl;
+  }
+}
 
 async function getCoupons(env) {
   if (env && env.COUPONS_KV) {

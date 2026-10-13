@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>FC 온라인 자동 쿠폰</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-area">
+        <span class="icon">⚽</span>
+        <h1>FC 온라인 자동 쿠폰</h1>
+      </div>
+      <span class="badge">v1.0</span>
+    </header>
+
+    <!-- Status Card -->
+    <div class="card status-card">
+      <div class="status-row">
+        <span class="label">넥슨 로그인 상태</span>
+        <span id="loginStatus" class="value checking">확인 중...</span>
+      </div>
+      <div class="status-row">
+        <span class="label">마지막 자동 탐색</span>
+        <span id="lastCheckTime" class="value muted">-</span>
+      </div>
+    </div>
+
+    <!-- Toggle Controls -->
+    <div class="card settings-card">
+      <div class="setting-item">
+        <div class="setting-text">
+          <div class="setting-title">5분 주기 자동 등록</div>
+          <div class="setting-desc">신규 쿠폰 발견 시 무음 자동 등록</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleAutoCheck" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-text">
+          <div class="setting-title">등록 알림 받기</div>
+          <div class="setting-desc">성공 시 브라우저 팝업 알림 표시</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleNotify" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-buttons">
+      <button id="btnRunNow" class="btn btn-primary">
+        <span class="btn-icon">⚡</span> 지금 즉시 쿠폰 확인 및 등록
+      </button>
+      <a href="https://fconline.nexon.com/main/index" target="_blank" class="btn btn-secondary">
+        ⚽ FC 온라인 홈페이지 열기
+      </a>
+    </div>
+
+    <!-- Manual Registration -->
+    <div class="manual-input-group">
+      <input type="text" id="manualCode" placeholder="쿠폰 번호 직접 입력 (예: TEST1234)">
+      <button id="btnManualRegister" class="btn btn-small">등록</button>
+    </div>
+
+    <!-- History Card -->
+    <div class="history-section">
+      <div class="section-header">
+        <h3>최근 등록 내역</h3>
+        <button id="btnClearHistory" class="btn-text">기록 비우기</button>
+      </div>
+      <div id="historyList" class="history-list">
+        <div class="empty-text">등록 내역이 없습니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

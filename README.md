@@ -4,14 +4,28 @@
 
 ---
 
-### 📥 원클릭 설치 파일 다운로드
+## 🌟 [강력 추천] 크롬 확장 프로그램 (세션 튕김 0%, 초경량 14KB)
+> 평소 쓰시던 브라우저(Chrome, 네이버 웨일, Edge)의 넥슨 로그인 상태를 그대로 사용하여 **로그아웃 핑퐁 튕김 현상이 0%**입니다.
+
+[![Download Extension ZIP](https://img.shields.io/badge/📥_확장_프로그램_ZIP_다운로드-14KB-0284c7?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/kmj830/AutoCoupon/raw/main/extension_output/FCOnline_AutoCoupon_Extension.zip)
+
+> 👉 **[여기를 클릭하여 확장 프로그램 ZIP 다운로드](https://github.com/kmj830/AutoCoupon/raw/main/extension_output/FCOnline_AutoCoupon_Extension.zip)**  
+> *(로컬 폴더 바로 열기: [`extension`](extension))*
+
+### 🚀 확장 프로그램 1분 설치 방법 (Chrome / 웨일 / Edge 공통)
+1. 브라우저 주소창에 `chrome://extensions` (웨일은 `whale://extensions`, 엣지는 `edge://extensions`) 입력 후 이동합니다.
+2. 우측 상단의 **[개발자 모드]** 스위치를 **ON(켜짐)**으로 바꿉니다.
+3. 좌측 상단의 **[압축해제된 확장 프로그램을 로드합니다]**를 누르고 **`extension`** 폴더(또는 압축 푼 폴더)를 선택합니다.
+4. **설치 끝!** 평소처럼 넥슨에 로그인되어 있으면 브라우저가 켜져 있는 동안 **5분마다 백그라운드에서 무음으로 자동 등록**됩니다.
+
+---
+
+## 💻 윈도우 독립형 프로그램 (`AutoCoupon_Setup.exe`)
+> 브라우저 확장 프로그램 대신 윈도우 바탕화면 독립 프로그램 실행을 원하실 경우 사용합니다.
 
 [![Download Installer](https://img.shields.io/badge/⬇️_설치_파일_다운로드-AutoCoupon__Setup.exe-00C853?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/kmj830/AutoCoupon/raw/main/installer_output/AutoCoupon_Setup.exe)
 
 > 👉 **[여기를 클릭하여 최신 설치 프로그램 (AutoCoupon_Setup.exe) 바로 다운로드](https://github.com/kmj830/AutoCoupon/raw/main/installer_output/AutoCoupon_Setup.exe)**
-> *(위 링크 또는 버튼을 누르면 설치 파일이 즉시 다운로드됩니다!)*
->
-> *(인텔리제이/로컬에서 바로 실행하실 경우: [`installer_output/AutoCoupon_Setup.exe`](installer_output/AutoCoupon_Setup.exe))*
 
 ---
 

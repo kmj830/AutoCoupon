@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "FC 온라인 쿠폰 자동 등록기 (AutoCoupon)",
+  "version": "1.0.0",
+  "description": "FC 온라인 실시간 쿠폰을 5분마다 자동 수집하여 넥슨 계정에 무음으로 등록합니다. (세션 튕김 0%)",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "FC 온라인 자동 쿠폰 대시보드"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "tabs",
+    "scripting",
+    "cookies"
+  ],
+  "host_permissions": [
+    "https://*.nexon.com/*",
+    "https://fc-coupon-api.alswnd0830.workers.dev/*"
+  ]
+}

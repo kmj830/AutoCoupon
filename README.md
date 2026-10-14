@@ -7,10 +7,7 @@
 ## 🌟 [강력 추천] 크롬 확장 프로그램
 > 평소 쓰시던 브라우저(Chrome, 네이버 웨일, Edge)의 넥슨 로그인 상태를 그대로 사용합니다.
 
-[![Download Extension ZIP](https://img.shields.io/badge/📥_확장_프로그램_ZIP_다운로드-14KB-0284c7?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/kmj830/AutoCoupon/raw/main/extension_output/FCOnline_AutoCoupon_Extension.zip)
-
 > 👉 **[여기를 클릭하여 확장 프로그램 ZIP 다운로드](https://github.com/kmj830/AutoCoupon/raw/main/extension_output/FCOnline_AutoCoupon_Extension.zip)**  
-> *(로컬 폴더 바로 열기: [`extension`](extension))*
 
 ### 🚀 확장 프로그램 1분 설치 방법 (Chrome / 웨일 / Edge 공통)
 1. 브라우저 주소창에 `chrome://extensions` (웨일은 `whale://extensions`, 엣지는 `edge://extensions`) 입력 후 이동합니다.
